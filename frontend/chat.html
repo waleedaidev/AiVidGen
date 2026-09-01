@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AiVidGen - Chat</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <main class="chat-page">
+    <div id="messages" class="messages"></div>
+
+    <form id="chat-form" class="chat-input">
+      <input id="chat-text" type="text" placeholder="Type your answer..." autocomplete="off" required>
+      <button type="submit">Send</button>
+    </form>
+
+    <section id="result" class="result" hidden>
+      <video id="result-video" controls></video>
+      <p id="fallback-note" class="fallback-note" hidden>This is a preview built from our stock library while your custom render finishes up.</p>
+      <div class="cta">
+        <p>Like it? This was just a 15 second teaser.</p>
+        <button id="pay-full">Pay for the full video</button>
+        <button id="pay-more">Get more videos</button>
+        <p class="agent-note">One of our agents will reach out on WhatsApp shortly.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/js/chat.js"></script>
+</body>
+</html>

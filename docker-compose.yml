@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aividgen-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aividgen
+      POSTGRES_PASSWORD: aividgen
+      POSTGRES_DB: aividgen
+    ports:
+      - "5432:5432"
+    volumes:
+      - aividgen_pgdata:/var/lib/postgresql/data
+
+volumes:
+  aividgen_pgdata:

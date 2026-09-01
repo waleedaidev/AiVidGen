@@ -1,0 +1,103 @@
+:root {
+  --bg: #0d0d10;
+  --panel: #17171c;
+  --accent: #6f6fe8;
+  --text: #f1efe8;
+  --muted: #9c9a92;
+  font-family: -apple-system, Segoe UI, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.landing {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 96px 24px;
+  text-align: center;
+}
+
+.landing h1 { font-size: 2.2rem; margin-bottom: 8px; }
+.sub { color: var(--muted); margin-bottom: 32px; }
+
+textarea, input[type=text] {
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid #2c2c2e;
+  border-radius: 10px;
+  color: var(--text);
+  padding: 14px;
+  font-size: 1rem;
+  resize: vertical;
+}
+
+button {
+  margin-top: 16px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+button:disabled { opacity: 0.6; cursor: default; }
+
+.error { color: #f0997b; margin-top: 12px; }
+
+.chat-page {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.messages {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 24px;
+}
+
+.msg {
+  padding: 10px 14px;
+  border-radius: 12px;
+  max-width: 80%;
+  line-height: 1.4;
+}
+
+.msg.assistant { background: var(--panel); align-self: flex-start; }
+.msg.user { background: var(--accent); align-self: flex-end; }
+
+.chat-input {
+  display: flex;
+  gap: 8px;
+  position: sticky;
+  bottom: 16px;
+}
+
+.chat-input input { flex: 1; margin: 0; }
+.chat-input button { margin: 0; }
+
+.result {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.result video { width: 100%; border-radius: 12px; background: black; }
+
+.fallback-note { color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
+
+.cta { margin-top: 20px; }
+.cta button { display: block; width: 100%; margin-top: 10px; }
+.agent-note { color: var(--muted); font-size: 0.85rem; margin-top: 12px; }
