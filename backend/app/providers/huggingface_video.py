@@ -1,13 +1,15 @@
-"""Hugging Face Serverless Inference API video provider — free, but a real free API (not a
-paid trial), so expect occasional cold-start failures (model "loading") and rate limits. Those
-surface as GenerationError, which feeds straight into the existing retry -> stock-fallback path,
-so a flaky free tier is fine here by design.
+"""Hugging Face Inference Providers router — video provider.
+
+IMPORTANT (verified live, 2026-09): the free `hf-inference` provider currently has ZERO
+video-generation models available — every text-to-video / image-to-video model on the Hub
+that supports serverless inference routes through paid third-party providers (fal, novita,
+replicate, etc.), not the free tier. So as things stand, every call here will raise
+GenerationError and fall through to the stock/local fallback — that's not a bug, it's the
+current state of HF's free tier. Left wired up (rather than removed) so it starts working
+automatically the moment HF adds a free video model, or if you point HUGGINGFACE_VIDEO_MODEL
+at a model you have a paid Inference Provider arrangement for.
 
 Needs a free token from https://huggingface.co/settings/tokens (no payment info required).
-
-Note: the default model (damo-vilab/text-to-video-ms-1.7b) is text-to-video only — it ignores
-the subject reference image. Swap HUGGINGFACE_VIDEO_MODEL for an image-to-video model later if
-visual consistency with the subject image becomes a priority.
 """
 
 import httpx
@@ -15,7 +17,7 @@ import httpx
 from app.config import get_settings
 from app.providers.base import VideoProvider, GenerationError
 
-HF_INFERENCE_URL = "https://api-inference.huggingface.co/models/{model}"
+HF_INFERENCE_URL = "https://router.huggingface.co/hf-inference/models/{model}"
 
 
 class HuggingFaceVideoProvider(VideoProvider):

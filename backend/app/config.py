@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     huggingface_video_model: str = "damo-vilab/text-to-video-ms-1.7b"
 
     piper_voice_model_path: str = ""
+    piper_binary_path: str = "piper"  # override with a full path to piper.exe if it's not on PATH
 
     pexels_api_key: str = ""
     unsplash_access_key: str = ""

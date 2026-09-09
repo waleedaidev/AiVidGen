@@ -5,5 +5,7 @@ venv/
 .env
 backend/storage/
 backend/voices/
+backend/piper_bin/
+backend/.venv/
 *.egg-info/
 .DS_Store

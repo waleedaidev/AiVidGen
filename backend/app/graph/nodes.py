@@ -154,9 +154,20 @@ def fallback_stock(state: GraphState) -> GraphState:
         db.close()
 
     if clip is None:
-        # No stock library seeded at all — nothing to fall back to.
-        _update_job(state["job_id"], status="failed", error_log="generation failed, no stock fallback available")
-        return {**state, "status": "failed"}
+        # No stock library seeded yet — last resort so the user still gets *something*:
+        # render the subject image + voiceover locally instead of failing outright.
+        from app.providers.mock import MockVideoProvider
+
+        try:
+            MockVideoProvider().generate_video(
+                state["subject_image_path"], state["script"], TEASER_DURATION_SECONDS, out_path
+            )
+        except GenerationError as exc:
+            _update_job(state["job_id"], status="failed", error_log=f"no stock fallback and local render failed: {exc}")
+            return {**state, "status": "failed"}
+
+        _update_job(state["job_id"], status="done", used_fallback=True, video_path=out_path)
+        return {**state, "video_path": out_path, "used_fallback": True, "status": "done"}
 
     try:
         overlay_audio_on_video(clip.file_path, state["audio_path"], out_path, TEASER_DURATION_SECONDS)

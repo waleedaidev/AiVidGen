@@ -21,10 +21,15 @@ number while the video renders. Ends with a 10-15s teaser + a "pay for full vide
   - `mock` — fully free/local (placeholder image, silent TTS, ffmpeg-rendered clip), zero
     external calls, for quick sanity checks.
   - `free` (default) — real, genuinely free providers: **Pollinations.ai** for images (no key,
-    no limit), **Piper** for voiceover (local, no key), **Hugging Face** Inference API for
-    video (free token, but expect occasional cold-start failures — that's fine, it feeds the
-    same retry/fallback path). Any of the three silently falls back to its mock counterpart if
-    not configured yet.
+    no limit), **Piper** for voiceover (local, no key). **Hugging Face** for video — wired up,
+    but verified (2026-09) that HF's free `hf-inference` tier currently has *zero* video models
+    available, so this reliably falls through to the fallback path below every time; left in
+    place so it activates automatically once HF (or you) points it at a working free/paid
+    model. Any of the three silently falls back to its mock counterpart if not configured yet.
+  - Since HF video generation always fails right now, every job lands on the fallback: a real
+    stock clip (once you seed the library, see below) or — if no stock library is seeded yet —
+    a local render of the subject image + Piper voiceover via ffmpeg. Either way the user always
+    gets a video; nothing errors out to a blank screen.
   - `live` — Highfield. `highfield.py` is a stub — fill in the three TODOs once you have
     Highfield's API docs.
 
@@ -34,10 +39,12 @@ number while the video renders. Ends with a 10-15s teaser + a "pay for full vide
 - Docker (for Postgres) — or point `DATABASE_URL` at any Postgres you already have
 - `ffmpeg` on your PATH (used for mock video generation and stock-fallback audio overlay)
 - For the `free` provider mode (default):
-  - A free Hugging Face token from https://huggingface.co/settings/tokens (video)
-  - `piper-tts` installed (`pip install -r requirements.txt` covers this) plus a downloaded
-    voice model — see "Piper voice setup" below (voice). Without it, audio falls back to
-    silent placeholder automatically, so this step can be skipped for a first smoke test.
+  - A free Hugging Face token from https://huggingface.co/settings/tokens (video — see the
+    caveat above about HF's free tier having no video models right now)
+  - The standalone **piper.exe/piper** binary (NOT the `piper-tts` pip package — its
+    `piper-phonemize` dependency has no prebuilt wheel for Windows + Python 3.12) plus a
+    downloaded voice model — see "Piper voice setup" below. Without it, audio falls back to
+    the silent mock provider automatically, so this step can be skipped for a first smoke test.
 
 ## Setup
 
@@ -59,16 +66,28 @@ uvicorn app.main:app --reload --port 8000
 Open http://localhost:8000 — that's the landing page. Submitting a prompt takes you to the
 chat, which runs alongside the background LangGraph job, and ends with a rendered teaser.
 
+If port 5432 is already taken by another Postgres on your machine, change the host port in
+`docker-compose.yml` (e.g. `"55490:5432"`) and match it in `DATABASE_URL` in `.env`.
+
 ## Piper voice setup
 
 ```bash
-# Download a voice model (this one is a good default: natural, medium quality/speed)
-# from https://huggingface.co/rhasspy/piper-voices — you need BOTH files:
-#   en_US-lessac-medium.onnx
-#   en_US-lessac-medium.onnx.json
-# Put them anywhere, e.g. backend/voices/, then in .env:
+# 1. Binary — download from https://github.com/rhasspy/piper/releases
+#    (piper_windows_amd64.zip on Windows), extract anywhere, e.g. backend/piper_bin/
+
+# 2. Voice model (this one is a good default: natural, medium quality/speed)
+#    from https://huggingface.co/rhasspy/piper-voices — you need BOTH files:
+#      en_US-lessac-medium.onnx
+#      en_US-lessac-medium.onnx.json
+#    Put them anywhere, e.g. backend/voices/
+
+# 3. In .env:
 PIPER_VOICE_MODEL_PATH=./voices/en_US-lessac-medium.onnx
+PIPER_BINARY_PATH=./piper_bin/piper/piper.exe
 ```
+
+On Windows, the extracted `piper.exe` needs the Microsoft Visual C++ Redistributable installed
+(`winget install Microsoft.VCRedist.2015+.x64`) or it fails with a missing-DLL error.
 
 ## Going live with real models
 
