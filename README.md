@@ -17,15 +17,27 @@ number while the video renders. Ends with a 10-15s teaser + a "pay for full vide
 - **DB**: Postgres (`backend/app/models_db.py`) — leads, generation_jobs, chat_messages,
   stock_clips.
 - **Providers**: `backend/app/providers/` — pluggable interfaces for image/audio/video
-  generation. `mock.py` runs fully free/local (placeholder image, silent TTS, ffmpeg-rendered
-  clip) so the whole thing works before you have any paid keys. `highfield.py` is a stub —
-  fill in the three TODOs once you have Highfield's API docs.
+  generation, selected by `PROVIDER_MODE`:
+  - `mock` — fully free/local (placeholder image, silent TTS, ffmpeg-rendered clip), zero
+    external calls, for quick sanity checks.
+  - `free` (default) — real, genuinely free providers: **Pollinations.ai** for images (no key,
+    no limit), **Piper** for voiceover (local, no key), **Hugging Face** Inference API for
+    video (free token, but expect occasional cold-start failures — that's fine, it feeds the
+    same retry/fallback path). Any of the three silently falls back to its mock counterpart if
+    not configured yet.
+  - `live` — Highfield. `highfield.py` is a stub — fill in the three TODOs once you have
+    Highfield's API docs.
 
 ## Prerequisites
 
 - Python 3.11+
 - Docker (for Postgres) — or point `DATABASE_URL` at any Postgres you already have
 - `ffmpeg` on your PATH (used for mock video generation and stock-fallback audio overlay)
+- For the `free` provider mode (default):
+  - A free Hugging Face token from https://huggingface.co/settings/tokens (video)
+  - `piper-tts` installed (`pip install -r requirements.txt` covers this) plus a downloaded
+    voice model — see "Piper voice setup" below (voice). Without it, audio falls back to
+    silent placeholder automatically, so this step can be skipped for a first smoke test.
 
 ## Setup
 
@@ -47,13 +59,25 @@ uvicorn app.main:app --reload --port 8000
 Open http://localhost:8000 — that's the landing page. Submitting a prompt takes you to the
 chat, which runs alongside the background LangGraph job, and ends with a rendered teaser.
 
+## Piper voice setup
+
+```bash
+# Download a voice model (this one is a good default: natural, medium quality/speed)
+# from https://huggingface.co/rhasspy/piper-voices — you need BOTH files:
+#   en_US-lessac-medium.onnx
+#   en_US-lessac-medium.onnx.json
+# Put them anywhere, e.g. backend/voices/, then in .env:
+PIPER_VOICE_MODEL_PATH=./voices/en_US-lessac-medium.onnx
+```
+
 ## Going live with real models
 
 1. Add `OPENROUTER_API_KEY` to `.env` — chat becomes adaptive immediately, no code changes.
-2. Once you have Highfield's actual REST API spec (base URL, auth, request/response shape),
+2. `PROVIDER_MODE=free` (default) already wires real image/voice/video generation — see above.
+3. Once you have Highfield's actual REST API spec (base URL, auth, request/response shape),
    fill in the three TODO methods in `backend/app/providers/highfield.py`. The graph nodes
    never need to change — they only depend on the provider interface.
-3. Set `PROVIDER_MODE=live` and `HIGHFIELD_API_KEY` + `HIGHFIELD_BASE_URL` in `.env`.
+4. Set `PROVIDER_MODE=live` and `HIGHFIELD_API_KEY` + `HIGHFIELD_BASE_URL` in `.env`.
 
 ## Seeding the stock fallback library
 

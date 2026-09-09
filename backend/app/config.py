@@ -8,7 +8,7 @@ _BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    provider_mode: str = "mock"  # "mock" | "live"
+    provider_mode: str = "free"  # "mock" (fully local/fake) | "free" (Pollinations/Piper/HF) | "live" (Highfield)
 
     database_url: str = "postgresql+psycopg://aividgen:aividgen@localhost:5432/aividgen"
 
@@ -17,6 +17,11 @@ class Settings(BaseSettings):
 
     highfield_api_key: str = ""
     highfield_base_url: str = ""
+
+    huggingface_api_token: str = ""
+    huggingface_video_model: str = "damo-vilab/text-to-video-ms-1.7b"
+
+    piper_voice_model_path: str = ""
 
     pexels_api_key: str = ""
     unsplash_access_key: str = ""
