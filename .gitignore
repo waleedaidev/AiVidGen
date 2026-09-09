@@ -4,5 +4,6 @@ __pycache__/
 venv/
 .env
 backend/storage/
+backend/voices/
 *.egg-info/
 .DS_Store
