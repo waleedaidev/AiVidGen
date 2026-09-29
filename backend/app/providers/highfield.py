@@ -1,54 +1,177 @@
-"""Real Highfield-backed providers.
+"""Highfield-backed providers for image, video, and audio generation.
 
-NOT WIRED UP YET. We don't have Highfield's REST endpoint spec (base URL, auth header shape,
-request/response schema) yet. Once that's shared, fill in the three TODOs below — the
-generate_image/generate_video/generate_audio graph nodes don't need to change at all, since
-they only depend on the ImageProvider/AudioProvider/VideoProvider interface.
+Highfield API uses an async request model:
+1. Submit request (POST) → get request_id
+2. Poll status (GET) → wait for completion
+3. Download results
 
-Until HIGHFIELD_API_KEY + HIGHFIELD_BASE_URL are set and PROVIDER_MODE=live, these classes are
-never instantiated (see app/providers/__init__.py) — mock providers run instead.
+Supports:
+- Image generation (soul/v2/standard endpoint)
+- Video generation (dynamic/v1/image-to-video or similar)
+- TTS/audio (when documented)
 """
 
 import httpx
+import time
+import uuid
+from pathlib import Path
 
 from app.config import get_settings
 from app.providers.base import ImageProvider, AudioProvider, VideoProvider, GenerationError
 
 
-class _HighfieldClient:
+class HighfieldClient:
+    """Base Highfield API client with auth and polling."""
+
     def __init__(self):
         settings = get_settings()
-        self.base_url = settings.highfield_base_url
-        self.api_key = settings.highfield_api_key
-        self.client = httpx.Client(
-            base_url=self.base_url,
-            headers={"Authorization": f"Bearer {self.api_key}"},
-            timeout=120,
-        )
+        self.api_key_id = settings.highfield_api_key_id
+        self.api_key_secret = settings.highfield_api_key_secret
+        self.base_url = "https://api.higgsfield.ai"
+
+        if not self.api_key_id or not self.api_key_secret:
+            raise GenerationError("HIGHFIELD_API_KEY_ID and HIGHFIELD_API_KEY_SECRET not set")
+
+    def _auth_header(self) -> str:
+        """Format authorization header."""
+        return f"Key {self.api_key_id}:{self.api_key_secret}"
+
+    def _submit_request(self, endpoint: str, payload: dict) -> str:
+        """Submit generation request and return request_id."""
+        idempotency_key = str(uuid.uuid4()).lower()
+
+        with httpx.Client() as client:
+            resp = client.post(
+                f"{self.base_url}{endpoint}",
+                headers={
+                    "Authorization": self._auth_header(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": idempotency_key,
+                },
+                json=payload,
+                timeout=30,
+            )
+
+        if resp.status_code != 200:
+            raise GenerationError(f"Highfield request failed ({resp.status_code}): {resp.text}")
+
+        data = resp.json()
+        request_id = data.get("request_id")
+        if not request_id:
+            raise GenerationError(f"No request_id in response: {data}")
+
+        return request_id
+
+    def _poll_status(self, request_id: str, timeout_sec: int = 300) -> dict:
+        """Poll request status until completion or timeout."""
+        start = time.time()
+
+        while time.time() - start < timeout_sec:
+            with httpx.Client() as client:
+                resp = client.get(
+                    f"{self.base_url}/requests/{request_id}/status",
+                    headers={"Authorization": self._auth_header()},
+                    timeout=30,
+                )
+
+            if resp.status_code != 200:
+                raise GenerationError(f"Status check failed ({resp.status_code}): {resp.text}")
+
+            data = resp.json()
+            status = data.get("status")
+
+            if status == "completed":
+                return data
+            elif status in ("failed", "nsfw", "canceled"):
+                raise GenerationError(f"Generation failed with status '{status}'")
+            elif status == "queued" or status == "processing":
+                time.sleep(5)  # Poll every 5 seconds
+            else:
+                raise GenerationError(f"Unknown status: {status}")
+
+        raise GenerationError(f"Generation timeout after {timeout_sec}s")
+
+    def _download_file(self, url: str, out_path: str) -> str:
+        """Download file from URL."""
+        with httpx.stream("GET", url) as resp:
+            if resp.status_code != 200:
+                raise GenerationError(f"Download failed ({resp.status_code})")
+
+            Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+            with open(out_path, "wb") as f:
+                for chunk in resp.iter_bytes(chunk_size=8192):
+                    f.write(chunk)
+
+        return out_path
 
 
-class HighfieldImageProvider(ImageProvider, _HighfieldClient):
+class HighfieldImageProvider(ImageProvider, HighfieldClient):
+    """Generate images using Highfield's soul/v2/standard endpoint."""
+
     def __init__(self):
-        _HighfieldClient.__init__(self)
+        HighfieldClient.__init__(self)
 
     def generate_subject_image(self, prompt: str, out_path: str) -> str:
-        # TODO: call Highfield's image-generation endpoint once its API spec is known.
-        raise GenerationError("HighfieldImageProvider not implemented yet")
+        """Generate subject reference image."""
+        request_id = self._submit_request(
+            "/higgsfield-ai/soul/v2/standard",
+            {"prompt": prompt},
+        )
+
+        result = self._poll_status(request_id)
+        images = result.get("images", [])
+
+        if not images:
+            raise GenerationError("No images in response")
+
+        image_url = images[0].get("url")
+        if not image_url:
+            raise GenerationError("No image URL in response")
+
+        return self._download_file(image_url, out_path)
 
 
-class HighfieldAudioProvider(AudioProvider, _HighfieldClient):
+class HighfieldVideoProvider(VideoProvider, HighfieldClient):
+    """Generate videos using Highfield's dynamic endpoint."""
+
     def __init__(self):
-        _HighfieldClient.__init__(self)
-
-    def generate_tts(self, script: str, out_path: str) -> str:
-        # TODO: call Highfield's TTS/voice endpoint once its API spec is known.
-        raise GenerationError("HighfieldAudioProvider not implemented yet")
-
-
-class HighfieldVideoProvider(VideoProvider, _HighfieldClient):
-    def __init__(self):
-        _HighfieldClient.__init__(self)
+        HighfieldClient.__init__(self)
 
     def generate_video(self, image_path: str, script: str, duration_seconds: int, out_path: str) -> str:
-        # TODO: call Highfield's video-generation endpoint once its API spec is known.
-        raise GenerationError("HighfieldVideoProvider not implemented yet")
+        """Generate video from image and script."""
+        # Highfield video endpoint: image-to-video or text-to-video
+        # Using image-to-video since we have a reference image
+
+        request_id = self._submit_request(
+            "/higgsfield-ai/dynamic/v1/image-to-video",
+            {
+                "prompt": script,
+                "duration": min(duration_seconds, 30),  # Highfield caps at 30s
+                "image_path": image_path,  # Or upload image separately if needed
+            },
+        )
+
+        result = self._poll_status(request_id, timeout_sec=600)  # 10 min timeout for video
+        videos = result.get("videos", [])
+
+        if not videos:
+            raise GenerationError("No videos in response")
+
+        video_url = videos[0].get("url")
+        if not video_url:
+            raise GenerationError("No video URL in response")
+
+        return self._download_file(video_url, out_path)
+
+
+class HighfieldAudioProvider(AudioProvider, HighfieldClient):
+    """Generate audio/TTS using Highfield's API (when endpoint documented)."""
+
+    def __init__(self):
+        HighfieldClient.__init__(self)
+
+    def generate_tts(self, script: str, out_path: str) -> str:
+        """Generate text-to-speech audio."""
+        # Highfield TTS endpoint not yet documented in quickstart
+        # Placeholder: would be similar async pattern
+        raise GenerationError("HighfieldAudioProvider not documented yet — use Piper for now")

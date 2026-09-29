@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_chat_model: str = "openai/gpt-4o-mini"
 
-    highfield_api_key: str = ""
-    highfield_base_url: str = ""
+    highfield_api_key_id: str = ""
+    highfield_api_key_secret: str = ""
 
     huggingface_api_token: str = ""
     huggingface_video_model: str = "damo-vilab/text-to-video-ms-1.7b"

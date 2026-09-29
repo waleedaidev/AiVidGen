@@ -9,7 +9,7 @@ from app.providers.huggingface_video import HuggingFaceVideoProvider
 
 def get_image_provider() -> ImageProvider:
     settings = get_settings()
-    if settings.provider_mode == "live" and settings.highfield_api_key:
+    if settings.provider_mode == "live" and settings.highfield_api_key_id and settings.highfield_api_key_secret:
         return HighfieldImageProvider()
     if settings.provider_mode == "mock":
         return MockImageProvider()
@@ -19,7 +19,7 @@ def get_image_provider() -> ImageProvider:
 
 def get_audio_provider() -> AudioProvider:
     settings = get_settings()
-    if settings.provider_mode == "live" and settings.highfield_api_key:
+    if settings.provider_mode == "live" and settings.highfield_api_key_id and settings.highfield_api_key_secret:
         return HighfieldAudioProvider()
     if settings.provider_mode == "mock":
         return MockAudioProvider()
@@ -32,7 +32,7 @@ def get_audio_provider() -> AudioProvider:
 
 def get_video_provider() -> VideoProvider:
     settings = get_settings()
-    if settings.provider_mode == "live" and settings.highfield_api_key:
+    if settings.provider_mode == "live" and settings.highfield_api_key_id and settings.highfield_api_key_secret:
         return HighfieldVideoProvider()
     if settings.provider_mode == "mock":
         return MockVideoProvider()
