@@ -1,14 +1,14 @@
-"""Highfield-backed providers for image, video, and audio generation.
+"""Highfield-backed providers using cheapest models for cost optimization.
 
 Highfield API uses an async request model:
 1. Submit request (POST) → get request_id
 2. Poll status (GET) → wait for completion
 3. Download results
 
-Supports:
-- Image generation (soul/v2/standard endpoint)
-- Video generation (dynamic/v1/image-to-video or similar)
-- TTS/audio (when documented)
+Cost-optimized model selection:
+- Image: z_image (Tongyi-MAI, Chinese, super-fast, budget-friendly)
+- Video: minimax_h3_max (MiniMax, Chinese, fast, 5-15 sec clips)
+- Audio: Piper (local, no cost)
 """
 
 import httpx
@@ -106,16 +106,19 @@ class HighfieldClient:
 
 
 class HighfieldImageProvider(ImageProvider, HighfieldClient):
-    """Generate images using Highfield's soul/v2/standard endpoint."""
+    """Generate images using z_image (Tongyi-MAI, cheapest Chinese model)."""
 
     def __init__(self):
         HighfieldClient.__init__(self)
 
     def generate_subject_image(self, prompt: str, out_path: str) -> str:
-        """Generate subject reference image."""
+        """Generate subject reference image using z_image (super-fast, budget-friendly)."""
         request_id = self._submit_request(
-            "/higgsfield-ai/soul/v2/standard",
-            {"prompt": prompt},
+            "/higgsfield-ai/generate/image",
+            {
+                "model": "z_image",
+                "prompt": prompt,
+            },
         )
 
         result = self._poll_status(request_id)
@@ -132,22 +135,21 @@ class HighfieldImageProvider(ImageProvider, HighfieldClient):
 
 
 class HighfieldVideoProvider(VideoProvider, HighfieldClient):
-    """Generate videos using Highfield's dynamic endpoint."""
+    """Generate videos using minimax_h3_max (MiniMax, cheapest Chinese model)."""
 
     def __init__(self):
         HighfieldClient.__init__(self)
 
     def generate_video(self, image_path: str, script: str, duration_seconds: int, out_path: str) -> str:
-        """Generate video from image and script."""
-        # Highfield video endpoint: image-to-video or text-to-video
-        # Using image-to-video since we have a reference image
-
+        """Generate video from image/script using minimax_h3_max (fast, budget-friendly, 5-15 sec)."""
         request_id = self._submit_request(
-            "/higgsfield-ai/dynamic/v1/image-to-video",
+            "/higgsfield-ai/generate/video",
             {
+                "model": "minimax_h3_max",
                 "prompt": script,
-                "duration": min(duration_seconds, 30),  # Highfield caps at 30s
-                "image_path": image_path,  # Or upload image separately if needed
+                "duration": min(duration_seconds, 15),  # MiniMax H3 Max supports 5-15s
+                "start_image_path": image_path,
+                "resolution": "768p",  # Balanced cost/quality
             },
         )
 
