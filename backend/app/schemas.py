@@ -25,5 +25,17 @@ class ChatTurnResponse(BaseModel):
 class JobStatusResponse(BaseModel):
     job_id: str
     status: str
+    progress: int
     used_fallback: bool
     video_url: str | None = None
+    upsell_message: str | None = None
+
+
+class ReviewRequest(BaseModel):
+    notes: str | None = None
+
+
+class RegenerateShotRequest(BaseModel):
+    prompt: str | None = None
+    keyframe_prompt: str | None = None
+    negative_prompt: str | None = None

@@ -1,7 +1,5 @@
-"""Pollinations.ai image provider — genuinely free, unlimited, no API key or signup required.
-Unlike most "free tier" services (credit caps, watermarks, trial periods), this one has none
-of that, so it's the default real image provider until Highfield's image endpoint is wired up.
-"""
+"""Pollinations.ai image provider — free, no API key. Used for character reference images and
+per-shot keyframes. A fixed seed per character keeps faces/outfits more consistent."""
 
 import urllib.parse
 
@@ -13,11 +11,13 @@ POLLINATIONS_URL = "https://image.pollinations.ai/prompt/{prompt}"
 
 
 class PollinationsImageProvider(ImageProvider):
-    def generate_subject_image(self, prompt: str, out_path: str) -> str:
-        encoded = urllib.parse.quote(prompt)
-        url = POLLINATIONS_URL.format(prompt=encoded)
+    def generate_subject_image(self, prompt, out_path, width=768, height=768, seed=None):
+        url = POLLINATIONS_URL.format(prompt=urllib.parse.quote(prompt[:1500]))
+        params = {"width": width, "height": height, "nologo": "true", "model": "flux"}
+        if seed is not None:
+            params["seed"] = seed
         try:
-            resp = httpx.get(url, params={"width": 768, "height": 768, "nologo": "true"}, timeout=60)
+            resp = httpx.get(url, params=params, timeout=120, follow_redirects=True)
         except httpx.HTTPError as exc:
             raise GenerationError(f"Pollinations request failed: {exc}") from exc
 

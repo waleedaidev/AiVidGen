@@ -9,3 +9,4 @@ backend/piper_bin/
 backend/.venv/
 *.egg-info/
 .DS_Store
+backend/music/

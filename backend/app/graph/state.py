@@ -6,17 +6,10 @@ class GraphState(TypedDict, total=False):
     lead_id: str
     raw_prompt: str
 
-    industry: str
-    topic: str
+    brief: dict
+    script: dict  # {title, logline, characters: [{key, name, role}], scenes: [{location, description, present, dialogue}]}
+    scene_audio: list[dict]  # per script scene: {path, duration, timing}
+    music_path: str | None
 
-    script: str
-    subject_image_path: str
-    audio_path: str
-    video_path: str
-
-    attempt_count: int
-    max_attempts: int
-    used_fallback: bool
-
-    status: str
-    error: str
+    route: str
+    stage: str
